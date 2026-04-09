@@ -1,19 +1,74 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-* {
-  box-sizing: border-box;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Inter, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #0f172a;
+    /* Soft gradient + subtle grid (MIS Grid) */
+    background-color: #f4f6fd;
+    background-image:
+      linear-gradient(160deg, rgb(238 242 255 / 0.95) 0%, rgb(250 245 255 / 0.6) 45%, rgb(239 246 255 / 0.9) 100%),
+      linear-gradient(to right, rgb(99 102 241 / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(99 102 241 / 0.06) 1px, transparent 1px);
+    background-size: auto, 28px 28px, 28px 28px;
+    background-attachment: fixed;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
-}
+@layer components {
+  /* Main app shell: slightly stronger grid inside content area */
+  .mis-shell {
+    background-image:
+      linear-gradient(to right, rgb(99 102 241 / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(99 102 241 / 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
 
-#root {
-  min-height: 100vh;
+  .mis-panel {
+    @apply rounded-2xl border border-indigo-100/80 bg-white/95 shadow-sm ring-1 ring-indigo-500/[0.07] backdrop-blur-sm;
+  }
+
+  .mis-section-title {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-indigo-900/70;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition-shadow focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/80;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-50;
+  }
+
+  .text-link {
+    @apply font-medium text-indigo-700 underline decoration-indigo-200 underline-offset-4 transition hover:text-indigo-900 hover:decoration-indigo-400;
+  }
+
+  .mis-json-surface {
+    @apply min-w-0 w-full overflow-hidden rounded-b-xl bg-slate-50/80;
+  }
 }

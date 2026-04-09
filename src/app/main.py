@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.routing import Route
+from starlette.staticfiles import StaticFiles
 
 from src.app.core.config import settings
 from src.app.core.logging import setup_logging
@@ -16,6 +18,20 @@ from src.app.mcp.server import mcp_app
 from src.app.middleware.metrics import MetricsMiddleware, metrics_endpoint
 from src.app.middleware.request_id import RequestIDMiddleware
 from src.app.middleware.logging import LoggingMiddleware
+
+
+def _resolve_frontend_dist() -> Path | None:
+    """Directory containing built Vite assets (`index.html`)."""
+    if settings.frontend_dist:
+        p = Path(settings.frontend_dist)
+        if p.is_dir() and (p / "index.html").is_file():
+            return p
+        return None
+    root = Path(__file__).resolve().parent.parent.parent
+    dist = root / "frontend" / "dist"
+    if dist.is_dir() and (dist / "index.html").is_file():
+        return dist
+    return None
 
 
 @asynccontextmanager
@@ -58,3 +74,9 @@ app.routes.append(Route("/metrics", metrics_endpoint))
 @app.get("/health")
 async def healthcheck() -> dict[str, str]:
     return {"status": "ok", "version": "0.1.0"}
+
+
+_spa_dist = _resolve_frontend_dist()
+if _spa_dist is not None:
+    # Last: serves `index.html` for client routes (BrowserRouter).
+    app.mount("/", StaticFiles(directory=str(_spa_dist), html=True), name="spa")

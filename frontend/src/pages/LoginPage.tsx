@@ -26,18 +26,37 @@ export function LoginPage() {
   }
 
   return (
-    <div className="mx-auto mt-24 max-w-md rounded border bg-white p-6">
-      <h1 className="mb-4 text-xl font-semibold">Login</h1>
-      <form onSubmit={onSubmit} className="space-y-3">
-        <input className="w-full rounded border p-2" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-        <input className="w-full rounded border p-2" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+    <div className="mx-auto mt-16 max-w-md mis-panel p-8 shadow-md">
+      <p className="mb-6 text-xs font-semibold uppercase tracking-[0.15em] text-indigo-700">MIS Grid</p>
+      <h1 className="mb-2 text-xl font-semibold tracking-tight text-slate-900">Login</h1>
+      <p className="mb-6 text-sm text-slate-600">Sign in to manage tools and API access.</p>
+      <p className="mb-6 text-xs text-slate-500">
+        Use the credentials issued by your administrator. If you need to create an account, use Register from the link below.
+      </p>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <input
+          className="input-field"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <input
+          className="input-field"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        <button className="w-full rounded bg-slate-900 px-4 py-2 text-white" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
+        <button type="submit" className="btn-primary w-full" disabled={loading}>
+          {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
-      <p className="mt-4 text-sm text-slate-600">
-        Need an account? <Link className="underline" to="/register">Register</Link>
+      <p className="mt-6 text-sm text-slate-600">
+        Need an account?{" "}
+        <Link className="text-link" to="/register">
+          Register
+        </Link>
       </p>
     </div>
   );

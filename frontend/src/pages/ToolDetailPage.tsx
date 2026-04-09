@@ -7,6 +7,22 @@ import { getTool, validateToolInput } from "../api/tools";
 
 type Tab = "schema" | "try" | "info";
 
+const TAB_HELP: Record<Tab, string> = {
+  schema: "Read-only JSON Schema: what callers may send and what the tool returns.",
+  try: "Validate JSON locally, then run the same path as production MCP calls.",
+  info: "Registry fields, endpoint, documentation link, and auth config snapshot.",
+};
+
+const MONACO_OPTS = {
+  minimap: { enabled: false },
+  automaticLayout: true,
+  scrollBeyondLastLine: false,
+  wordWrap: "on" as const,
+  fontSize: 13,
+};
+
+const readOnlyMonaco = { ...MONACO_OPTS, readOnly: true };
+
 export function ToolDetailPage() {
   const { toolId = "" } = useParams();
   const [tab, setTab] = useState<Tab>("schema");
@@ -42,76 +58,169 @@ export function ToolDetailPage() {
     }
   }
 
-  if (isLoading) return <p>Loading tool...</p>;
-  if (!tool) return <p>Tool not found.</p>;
+  if (isLoading) return <p className="text-sm text-slate-600">Loading tool…</p>;
+  if (!tool) return <p className="text-sm text-slate-600">Tool not found.</p>;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{tool.name}</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{tool.name}</h1>
           <p className="text-sm text-slate-600">{tool.description}</p>
         </div>
-        <Link className="rounded border px-3 py-2 text-sm" to={`/tools/${tool.id}/edit`}>
+        <Link className="btn-secondary shrink-0 self-start" to={`/tools/${tool.id}/edit`} title="Change tool definition and JSON configs">
           Edit
         </Link>
       </div>
-      <div className="flex gap-2">
-        {(["schema", "try", "info"] as const).map((t) => (
-          <button key={t} className={`rounded px-3 py-2 text-sm ${tab === t ? "bg-slate-900 text-white" : "border"}`} onClick={() => setTab(t)}>
-            {t}
-          </button>
-        ))}
+
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Tool views">
+          {(["schema", "try", "info"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={tab === t}
+              className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition ${
+                tab === t
+                  ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-500/40"
+                  : "border border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/50"
+              }`}
+              title={TAB_HELP[t]}
+              onClick={() => setTab(t)}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500">{TAB_HELP[tab]}</p>
       </div>
+
       {tab === "schema" ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded border">
-            <p className="border-b p-2 text-sm font-medium">Input Schema</p>
-            <Editor height="320px" defaultLanguage="json" value={JSON.stringify(tool.input_schema, null, 2)} options={{ readOnly: true, minimap: { enabled: false } }} />
+        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-indigo-500/[0.06]">
+            <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50/50 px-4 py-2.5">
+              <p className="text-sm font-medium text-indigo-950">Input schema</p>
+              <p className="mt-2 text-[11px] leading-snug text-slate-600">Defines allowed arguments and validation rules for this tool.</p>
+            </div>
+            <div className="mis-json-surface">
+              <Editor
+                height="300px"
+                defaultLanguage="json"
+                value={JSON.stringify(tool.input_schema, null, 2)}
+                options={readOnlyMonaco}
+              />
+            </div>
           </div>
-          <div className="rounded border">
-            <p className="border-b p-2 text-sm font-medium">Output Schema</p>
-            <Editor height="320px" defaultLanguage="json" value={JSON.stringify(tool.output_schema ?? {}, null, 2)} options={{ readOnly: true, minimap: { enabled: false } }} />
+          <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-indigo-500/[0.06]">
+            <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50/50 px-4 py-2.5">
+              <p className="text-sm font-medium text-indigo-950">Output schema</p>
+              <p className="mt-2 text-[11px] leading-snug text-slate-600">Describes the shape of a successful response body.</p>
+            </div>
+            <div className="mis-json-surface">
+              <Editor
+                height="300px"
+                defaultLanguage="json"
+                value={JSON.stringify(tool.output_schema ?? {}, null, 2)}
+                options={readOnlyMonaco}
+              />
+            </div>
           </div>
         </div>
       ) : null}
+
       {tab === "try" ? (
-        <div className="space-y-3">
-          <Editor height="260px" defaultLanguage="json" value={input} onChange={(v) => setInput(v ?? "{}")} options={{ minimap: { enabled: false } }} />
-          <div className="flex gap-2">
-            <button className="rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={runValidation}>
-              Validate Input
+        <div className="space-y-4">
+          <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-violet-500/[0.08]">
+            <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50 to-indigo-50/50 px-4 py-2.5">
+              <p className="text-sm font-medium text-indigo-950">Input JSON</p>
+              <p className="mt-2 text-[11px] leading-snug text-slate-600">Edit the payload you want to validate or send to the gateway.</p>
+            </div>
+            <div className="mis-json-surface">
+              <Editor
+                height="220px"
+                defaultLanguage="json"
+                value={input}
+                onChange={(v) => setInput(v ?? "{}")}
+                options={MONACO_OPTS}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary"
+              title="Check JSON against the input schema without calling the downstream service"
+              onClick={runValidation}
+            >
+              Validate input
             </button>
-            <button className="rounded border px-3 py-2 text-sm" onClick={executeTool}>
-              Execute Tool
+            <button
+              type="button"
+              className="btn-secondary"
+              title="Invoke the tool via MCP with the JSON above"
+              onClick={executeTool}
+            >
+              Execute tool
             </button>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">Validation Result</p>
-            <pre className="overflow-auto rounded bg-slate-100 p-3 text-xs">{validationResult || "No validation run yet."}</pre>
+            <p className="text-sm font-medium text-slate-800">Validation result</p>
+            <pre className="max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">
+              {validationResult || "No validation run yet."}
+            </pre>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">Last Request Payload</p>
-            <pre className="overflow-auto rounded bg-slate-100 p-3 text-xs">{lastRequestPayload || "No execution payload yet."}</pre>
+            <p className="text-sm font-medium text-slate-800">Last request payload</p>
+            <pre className="max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">
+              {lastRequestPayload || "No execution payload yet."}
+            </pre>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">Execution Output</p>
-            <pre className="overflow-auto rounded bg-slate-100 p-3 text-xs">{executionResult || "No execution output yet."}</pre>
+            <p className="text-sm font-medium text-slate-800">Execution output</p>
+            <pre className="max-h-64 overflow-auto rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-xs leading-relaxed text-slate-800">
+              {executionResult || "No execution output yet."}
+            </pre>
           </div>
         </div>
       ) : null}
+
       {tab === "info" ? (
-        <div className="grid gap-2 text-sm">
-          <p><span className="font-medium">ID:</span> {tool.id}</p>
-          <p><span className="font-medium">Category:</span> {tool.category}</p>
-          <p><span className="font-medium">Version:</span> {tool.version}</p>
-          <p><span className="font-medium">Owner:</span> {tool.owner}</p>
-          <p><span className="font-medium">Endpoint:</span> {tool.endpoint}</p>
-          <p><span className="font-medium">Docs:</span> {tool.documentation_url}</p>
-          <pre className="overflow-auto rounded bg-slate-100 p-3 text-xs">{JSON.stringify(tool.auth_config ?? {}, null, 2)}</pre>
+        <div className="mis-panel space-y-4 p-6">
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <p>
+              <span className="font-medium text-slate-900">ID:</span>{" "}
+              <span className="text-slate-700">{tool.id}</span>
+            </p>
+            <p>
+              <span className="font-medium text-slate-900">Category:</span>{" "}
+              <span className="text-slate-700">{tool.category}</span>
+            </p>
+            <p>
+              <span className="font-medium text-slate-900">Version:</span>{" "}
+              <span className="text-slate-700">{tool.version}</span>
+            </p>
+            <p>
+              <span className="font-medium text-slate-900">Owner:</span>{" "}
+              <span className="text-slate-700">{tool.owner ?? "—"}</span>
+            </p>
+            <p className="sm:col-span-2">
+              <span className="font-medium text-slate-900">Endpoint:</span>{" "}
+              <span className="break-all text-slate-700">{tool.endpoint}</span>
+            </p>
+            <p className="sm:col-span-2">
+              <span className="font-medium text-slate-900">Docs:</span>{" "}
+              <span className="break-all text-slate-700">{tool.documentation_url ?? "—"}</span>
+            </p>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-800">Auth config</p>
+            <pre className="max-h-56 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+              {JSON.stringify(tool.auth_config ?? {}, null, 2)}
+            </pre>
+          </div>
         </div>
       ) : null}
     </div>
   );
 }
-

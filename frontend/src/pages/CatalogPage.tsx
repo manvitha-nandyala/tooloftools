@@ -2,6 +2,28 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getCategories, listTools, searchTools } from "../api/tools";
+import { FieldLabel } from "../components/ui/hint";
+
+function StatusBadge({ active }: { active: boolean }) {
+  if (active) {
+    return (
+      <span
+        className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/15"
+        title="This tool is enabled for invocation through the gateway"
+      >
+        Active
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/10"
+      title="This tool is registered but not currently callable"
+    >
+      Inactive
+    </span>
+  );
+}
 
 export function CatalogPage() {
   const [page, setPage] = useState(1);
@@ -13,46 +35,114 @@ export function CatalogPage() {
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => (query ? searchTools(query, { page, category: category || undefined }) : listTools({ page, category: category || undefined })),
+    queryFn: () =>
+      query
+        ? searchTools(query, { page, category: category || undefined })
+        : listTools({ page, category: category || undefined }),
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Tool Catalog</h1>
-        <Link className="rounded bg-slate-900 px-3 py-2 text-sm text-white" to="/tools/new">Register Tool</Link>
+    <div className="space-y-10">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Tool catalog</h1>
+          <p className="text-sm text-slate-600">
+            Browse and search tools registered on <span className="font-medium text-indigo-700">MIS Grid</span>.
+          </p>
+          <p className="text-xs text-slate-500">
+            Use search for name or description; category narrows the list. Click a card to open schemas, try-it, and details.
+          </p>
+        </div>
+        <Link className="btn-primary shrink-0" to="/tools/new" title="Register a new tool definition">
+          Register Tool
+        </Link>
       </div>
-      <div className="flex gap-2">
-        <input className="w-full rounded border p-2" placeholder="Search tools..." value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select className="rounded border p-2" value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">All categories</option>
-          {(categories ?? []).map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+
+      <div className="space-y-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-indigo-900/60">Filters</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="max-w-xl flex-1">
+            <FieldLabel
+              htmlFor="catalog-search"
+              label="Search"
+              hint="Matches tool name and description text. Results update as you type."
+            />
+            <input
+              id="catalog-search"
+              className="input-field w-full"
+              placeholder="Search tools..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="w-full sm:max-w-xs sm:shrink-0">
+            <FieldLabel
+              htmlFor="catalog-category"
+              label="Category"
+              hint="Limit results to a single category from your registry."
+            />
+            <select
+              id="catalog-category"
+              className="input-field w-full"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="">All categories</option>
+              {(categories ?? []).map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
-      {isLoading ? <p>Loading tools...</p> : null}
-      <div className="grid gap-3 md:grid-cols-2">
+
+      {isLoading ? (
+        <p className="text-sm text-slate-500">Loading tools…</p>
+      ) : null}
+
+      <div className="grid gap-6 sm:grid-cols-2">
         {(data?.items ?? []).map((tool) => (
-          <Link key={tool.id} to={`/tools/${tool.id}`} className="rounded border p-3 hover:bg-slate-50">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="font-semibold">{tool.name}</h3>
-              <span className={`rounded px-2 py-1 text-xs ${tool.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{tool.active ? "active" : "inactive"}</span>
+          <Link
+            key={tool.id}
+            to={`/tools/${tool.id}`}
+            className="group block rounded-2xl border border-indigo-100/90 bg-gradient-to-br from-white via-white to-indigo-50/40 p-6 shadow-sm ring-1 ring-indigo-500/[0.06] transition-all hover:border-indigo-200 hover:shadow-md hover:ring-indigo-500/15"
+            title={`Open ${tool.name}`}
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <h3 className="text-lg font-semibold text-slate-900 group-hover:text-slate-950">{tool.name}</h3>
+              <StatusBadge active={tool.active} />
             </div>
-            <p className="text-sm text-slate-600">{tool.description || "No description"}</p>
-            <p className="mt-2 text-xs text-slate-500">{tool.category} • {tool.version}</p>
+            <p className="text-sm leading-relaxed text-slate-600">{tool.description || "No description"}</p>
+            <p className="mt-4 text-xs font-medium text-slate-400">
+              {tool.category} · v{tool.version}
+            </p>
           </Link>
         ))}
       </div>
-      <div className="flex items-center justify-between text-sm">
-        <span>
-          Page {data?.page ?? 1} / {data?.pages ?? 1}
+
+      <div className="flex flex-col gap-4 border-t border-slate-100 pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-sm text-slate-500">
+          Page {data?.page ?? 1} of {data?.pages ?? 1}
         </span>
-        <div className="flex gap-2">
-          <button className="rounded border px-3 py-1 disabled:opacity-50" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            Prev
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="btn-secondary px-5 py-2"
+            disabled={page <= 1}
+            title="Go to the previous page of results"
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous
           </button>
-          <button className="rounded border px-3 py-1 disabled:opacity-50" disabled={Boolean(data && page >= data.pages)} onClick={() => setPage((p) => p + 1)}>
+          <button
+            type="button"
+            className="btn-secondary px-5 py-2"
+            disabled={Boolean(data && page >= data.pages)}
+            title="Go to the next page of results"
+            onClick={() => setPage((p) => p + 1)}
+          >
             Next
           </button>
         </div>
@@ -60,4 +150,3 @@ export function CatalogPage() {
     </div>
   );
 }
-
