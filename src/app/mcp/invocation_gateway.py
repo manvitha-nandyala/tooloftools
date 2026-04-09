@@ -54,6 +54,12 @@ def _build_headers(tool: Tool) -> dict[str, str]:
         token = auth.get("token", "")
         headers["Authorization"] = f"Bearer {token}"
 
+    # Optional static headers for integrations that require fixed request headers.
+    static_headers = auth.get("static_headers")
+    if isinstance(static_headers, dict):
+        for key, value in static_headers.items():
+            headers[str(key)] = str(value)
+
     return headers
 
 
@@ -66,14 +72,20 @@ async def _do_request(tool: Tool, payload: dict) -> httpx.Response:
     timeout = (sla_ms / 1000 * 2) if sla_ms else DEFAULT_TIMEOUT_S
 
     method = (tool.metadata_ or {}).get("http_method", "POST").upper()
+    request_payload = dict(payload)
+    endpoint = str(tool.endpoint)
+
+    # Support endpoint templates like ".../mapped-projects/{employee_guid}".
+    # Any templated key found in payload is substituted and removed from query/body.
+    for key, value in list(request_payload.items()):
+        placeholder = f"{{{key}}}"
+        if placeholder in endpoint:
+            endpoint = endpoint.replace(placeholder, str(value))
+            request_payload.pop(key, None)
 
     if method == "GET":
-        return await client.get(
-            str(tool.endpoint), params=payload, headers=headers, timeout=timeout
-        )
-    return await client.post(
-        str(tool.endpoint), json=payload, headers=headers, timeout=timeout
-    )
+        return await client.get(endpoint, params=request_payload, headers=headers, timeout=timeout)
+    return await client.post(endpoint, json=request_payload, headers=headers, timeout=timeout)
 
 
 @retry(
@@ -110,32 +122,32 @@ async def invoke_tool(tool: Tool, arguments: dict) -> dict:
         return {"error": "configuration_error", "detail": f"Tool '{tool.id}' has no endpoint configured"}
 
     # 3. Execute
-    await logger.ainfo("gateway.invoke", tool_id=tool.id, endpoint=tool.endpoint)
+    logger.info("gateway.invoke", tool_id=tool.id, endpoint=tool.endpoint)
 
     try:
         response = await _request_with_retry(tool, arguments)
     except httpx.TimeoutException:
         status_label = "timeout"
-        await logger.awarn("gateway.timeout", tool_id=tool.id)
+        logger.warning("gateway.timeout", tool_id=tool.id)
         TOOL_INVOCATION_COUNT.labels(tool.id, status_label).inc()
         TOOL_INVOCATION_DURATION.labels(tool.id).observe(time.perf_counter() - start)
         return {"error": "timeout", "detail": f"Tool '{tool.id}' timed out after retries"}
     except httpx.ConnectError:
         status_label = "connection_error"
-        await logger.awarn("gateway.connect_error", tool_id=tool.id)
+        logger.warning("gateway.connect_error", tool_id=tool.id)
         TOOL_INVOCATION_COUNT.labels(tool.id, status_label).inc()
         TOOL_INVOCATION_DURATION.labels(tool.id).observe(time.perf_counter() - start)
         return {"error": "connection_error", "detail": f"Could not connect to '{tool.endpoint}'"}
     except httpx.HTTPError as exc:
         status_label = "http_error"
-        await logger.aerror("gateway.http_error", tool_id=tool.id, error=str(exc))
+        logger.error("gateway.http_error", tool_id=tool.id, error=str(exc))
         TOOL_INVOCATION_COUNT.labels(tool.id, status_label).inc()
         TOOL_INVOCATION_DURATION.labels(tool.id).observe(time.perf_counter() - start)
         return {"error": "http_error", "detail": str(exc)}
 
     # 4. Normalize response
     duration = time.perf_counter() - start
-    await logger.ainfo("gateway.response", tool_id=tool.id, status=response.status_code, duration_s=round(duration, 3))
+    logger.info("gateway.response", tool_id=tool.id, status=response.status_code, duration_s=round(duration, 3))
 
     if response.status_code >= 400:
         status_label = "downstream_error"

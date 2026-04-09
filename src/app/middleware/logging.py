@@ -16,7 +16,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
 
-        await logger.ainfo(
+        logger.info(
             "request",
             method=request.method,
             path=request.url.path,

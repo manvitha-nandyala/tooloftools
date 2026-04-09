@@ -28,7 +28,7 @@ async def handle_list_tools() -> list[MCPTool]:
         result = await session.execute(select(Tool).where(Tool.active.is_(True)))
         tools = result.scalars().all()
     mcp_tools = [registry_tool_to_mcp(t) for t in tools]
-    await logger.ainfo("mcp.list_tools", count=len(mcp_tools))
+    logger.info("mcp.list_tools", count=len(mcp_tools))
     return mcp_tools
 
 
@@ -45,7 +45,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[dict]:
     if not tool:
         return [{"type": "text", "text": json.dumps({"error": f"Tool '{name}' not found or inactive"})}]
 
-    await logger.ainfo("mcp.call_tool", tool_id=name)
+    logger.info("mcp.call_tool", tool_id=name)
 
     from src.app.mcp.invocation_gateway import invoke_tool
 

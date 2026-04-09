@@ -9,6 +9,8 @@ from src.app.core.config import settings
 from src.app.core.logging import setup_logging
 from src.app.api.v1.auth import router as auth_router
 from src.app.api.v1.categories import router as categories_router
+from src.app.api.v1.mcp import router as mcp_router
+from src.app.api.v1.metrics import router as metrics_router
 from src.app.api.v1.tools import router as tools_router
 from src.app.mcp.server import mcp_app
 from src.app.middleware.metrics import MetricsMiddleware, metrics_endpoint
@@ -43,6 +45,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(tools_router)
 app.include_router(categories_router)
+app.include_router(mcp_router)
+app.include_router(metrics_router)
 
 # Mount MCP server at /mcp (SSE transport for AI agents)
 app.mount("/mcp", mcp_app)

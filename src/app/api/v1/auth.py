@@ -40,6 +40,15 @@ class APIKeyResponse(BaseModel):
     name: str
 
 
+class APIKeyListItem(BaseModel):
+    key: str
+    name: str
+    active: bool
+    user_id: str
+
+    model_config = {"from_attributes": True}
+
+
 class UserResponse(BaseModel):
     id: str
     username: str
@@ -47,6 +56,10 @@ class UserResponse(BaseModel):
     team: str | None
 
     model_config = {"from_attributes": True}
+
+
+class UpdateRoleRequest(BaseModel):
+    role: Role
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
@@ -89,6 +102,30 @@ async def create_api_key(
     return APIKeyResponse(key=key, name=name)
 
 
+@router.get("/api-keys", response_model=list[APIKeyListItem])
+async def list_api_keys(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[APIKeyListItem]:
+    result = await db.execute(select(APIKey).where(APIKey.user_id == user.id).order_by(APIKey.created_at.desc()))
+    return [APIKeyListItem.model_validate(key) for key in result.scalars().all()]
+
+
+@router.delete("/api-keys/{key}")
+async def revoke_api_key(
+    key: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, bool]:
+    result = await db.execute(select(APIKey).where(APIKey.key == key, APIKey.user_id == user.id))
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.active = False
+    await db.flush()
+    return {"revoked": True}
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
     return UserResponse.model_validate(user)
@@ -101,3 +138,19 @@ async def list_users(
 ) -> list[UserResponse]:
     result = await db.execute(select(User).order_by(User.username))
     return [UserResponse.model_validate(u) for u in result.scalars().all()]
+
+
+@router.put("/users/{user_id}/role", response_model=UserResponse)
+async def update_user_role(
+    user_id: str,
+    payload: UpdateRoleRequest,
+    _admin: User = Depends(require_role(Role.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.role = payload.role.value
+    await db.flush()
+    return UserResponse.model_validate(user)
