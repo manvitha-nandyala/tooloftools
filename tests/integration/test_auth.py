@@ -6,7 +6,7 @@ from httpx import AsyncClient
 async def test_register_and_login(client: AsyncClient):
     resp = await client.post(
         "/api/v1/auth/register",
-        json={"username": "testuser", "password": "testpass", "role": "consumer"},
+        json={"username": "testuser", "password": "testpass"},
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -19,6 +19,26 @@ async def test_register_and_login(client: AsyncClient):
     )
     assert resp.status_code == 200
     assert "access_token" in resp.json()
+
+
+@pytest.mark.asyncio
+async def test_register_always_consumer_even_if_role_admin_requested(client: AsyncClient):
+    resp = await client.post(
+        "/api/v1/auth/register",
+        json={"username": "escalator", "password": "pass", "role": "admin"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["role"] == "consumer"
+
+
+@pytest.mark.asyncio
+async def test_public_config(client: AsyncClient):
+    resp = await client.get("/api/v1/auth/public-config")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "register_allowed" in data
+    assert "password_login_enabled" in data
+    assert "oidc_enabled" in data
 
 
 @pytest.mark.asyncio

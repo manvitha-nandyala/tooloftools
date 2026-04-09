@@ -1,12 +1,18 @@
 import { api } from "./client";
 import type { AuthToken, Role, User } from "../types";
 
-export async function registerUser(payload: {
-  username: string;
-  password: string;
-  role: Role;
-  team?: string;
-}) {
+export interface PublicAuthConfig {
+  register_allowed: boolean;
+  password_login_enabled: boolean;
+  oidc_enabled: boolean;
+}
+
+export async function getPublicAuthConfig() {
+  const { data } = await api.get<PublicAuthConfig>("/api/v1/auth/public-config");
+  return data;
+}
+
+export async function registerUser(payload: { username: string; password: string; team?: string }) {
   const { data } = await api.post<User>("/api/v1/auth/register", payload);
   return data;
 }

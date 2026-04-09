@@ -1,6 +1,7 @@
 """Shared test fixtures using an async SQLite database for fast isolated testing."""
 
 import asyncio
+import uuid
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -9,8 +10,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.app.core.database import Base, get_db
+from src.app.core.security import hash_password
 from src.app.models.tool import Tool  # noqa: F401
-from src.app.models.user import User, APIKey  # noqa: F401
+from src.app.models.user import APIKey, AuthProvider, Role, User  # noqa: F401
 from src.app.main import app
 
 
@@ -57,13 +59,30 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
 
+async def _seed_user(
+    username: str,
+    password: str,
+    role: str,
+    team: str | None = None,
+) -> None:
+    async with test_session_factory() as session:
+        session.add(
+            User(
+                id=str(uuid.uuid4()),
+                username=username,
+                hashed_password=hash_password(password),
+                role=role,
+                team=team,
+                auth_provider=AuthProvider.PASSWORD.value,
+            )
+        )
+        await session.commit()
+
+
 @pytest_asyncio.fixture
 async def admin_headers(client: AsyncClient) -> dict[str, str]:
-    """Register an admin user and return auth headers."""
-    await client.post(
-        "/api/v1/auth/register",
-        json={"username": "admin", "password": "admin123", "role": "admin", "team": "platform"},
-    )
+    """Seed an admin user and return auth headers."""
+    await _seed_user("admin", "admin123", Role.ADMIN.value, "platform")
     resp = await client.post(
         "/api/v1/auth/login",
         json={"username": "admin", "password": "admin123"},
@@ -74,11 +93,8 @@ async def admin_headers(client: AsyncClient) -> dict[str, str]:
 
 @pytest_asyncio.fixture
 async def developer_headers(client: AsyncClient) -> dict[str, str]:
-    """Register a developer user and return auth headers."""
-    await client.post(
-        "/api/v1/auth/register",
-        json={"username": "dev1", "password": "dev123", "role": "developer", "team": "scheduling"},
-    )
+    """Seed a developer user and return auth headers."""
+    await _seed_user("dev1", "dev123", Role.DEVELOPER.value, "scheduling")
     resp = await client.post(
         "/api/v1/auth/login",
         json={"username": "dev1", "password": "dev123"},
@@ -89,11 +105,8 @@ async def developer_headers(client: AsyncClient) -> dict[str, str]:
 
 @pytest_asyncio.fixture
 async def consumer_headers(client: AsyncClient) -> dict[str, str]:
-    """Register a consumer user and return auth headers."""
-    await client.post(
-        "/api/v1/auth/register",
-        json={"username": "consumer1", "password": "cons123", "role": "consumer"},
-    )
+    """Seed a consumer user and return auth headers."""
+    await _seed_user("consumer1", "cons123", Role.CONSUMER.value)
     resp = await client.post(
         "/api/v1/auth/login",
         json={"username": "consumer1", "password": "cons123"},

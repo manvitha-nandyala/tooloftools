@@ -4,7 +4,16 @@ import { useAuth } from "../../lib/auth-context";
 const navItems: { to: string; label: string; description: string }[] = [
   { to: "/catalog", label: "Catalog", description: "Browse and search registered tools" },
   { to: "/tools/new", label: "Register", description: "Create a new tool definition" },
-  { to: "/playground", label: "Playground", description: "Call tools via MCP with JSON arguments" },
+  {
+    to: "/integrations/mcp",
+    label: "MCP guide",
+    description: "Connect MCP clients (SSE URLs, tool names, arguments, responses)",
+  },
+  {
+    to: "/playground",
+    label: "Playground",
+    description: "Call tools via the authenticated HTTP API (same gateway as MCP, not raw SSE)",
+  },
   { to: "/metrics", label: "Metrics", description: "Usage and invocation statistics" },
   { to: "/admin", label: "Admin", description: "Users and API keys" },
 ];

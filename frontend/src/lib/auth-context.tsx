@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getCurrentUser, loginUser, registerUser } from "../api/auth";
 import { setAuthToken } from "../api/client";
-import type { Role, User } from "../types";
+import type { User } from "../types";
 
 const TOKEN_KEY = "tooloftools_token";
 
@@ -10,7 +10,7 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (payload: { username: string; password: string; role: Role; team?: string }) => Promise<void>;
+  register: (payload: { username: string; password: string; team?: string }) => Promise<void>;
   logout: () => void;
 }
 

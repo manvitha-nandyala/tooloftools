@@ -1,10 +1,13 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.app.api.deps import get_current_user, require_role
+from src.app.api.v1.oidc_routes import oidc_router as oidc_auth_router
+from src.app.core.config import settings
 from src.app.core.database import get_db
 from src.app.core.security import (
     create_access_token,
@@ -12,16 +15,17 @@ from src.app.core.security import (
     hash_password,
     verify_password,
 )
-from src.app.api.deps import get_current_user, require_role
-from src.app.models.user import APIKey, Role, User
+from src.app.models.user import APIKey, AuthProvider, Role, User
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+router.include_router(oidc_auth_router)
 
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     username: str
     password: str
-    role: Role = Role.CONSUMER
     team: str | None = None
 
 
@@ -54,16 +58,36 @@ class UserResponse(BaseModel):
     username: str
     role: str
     team: str | None
+    email: str | None = None
+    auth_provider: str = "password"
 
     model_config = {"from_attributes": True}
+
+
+class PublicAuthConfigResponse(BaseModel):
+    register_allowed: bool
+    password_login_enabled: bool
+    oidc_enabled: bool
 
 
 class UpdateRoleRequest(BaseModel):
     role: Role
 
 
+@router.get("/public-config", response_model=PublicAuthConfigResponse)
+async def public_auth_config() -> PublicAuthConfigResponse:
+    """Unauthenticated: feature flags for login/register UI."""
+    return PublicAuthConfigResponse(
+        register_allowed=settings.register_allowed,
+        password_login_enabled=settings.password_login_enabled,
+        oidc_enabled=settings.oidc_enabled,
+    )
+
+
 @router.post("/register", response_model=UserResponse, status_code=201)
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)) -> UserResponse:
+    if not settings.register_allowed:
+        raise HTTPException(status_code=403, detail="Registration is disabled")
     existing = await db.execute(select(User).where(User.username == payload.username))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username already taken")
@@ -71,8 +95,9 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
         id=str(uuid.uuid4()),
         username=payload.username,
         hashed_password=hash_password(payload.password),
-        role=payload.role.value,
+        role=Role.CONSUMER.value,
         team=payload.team,
+        auth_provider=AuthProvider.PASSWORD.value,
     )
     db.add(user)
     await db.flush()
@@ -81,9 +106,18 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    if not settings.password_login_enabled:
+        raise HTTPException(status_code=403, detail="Password login is disabled; use SSO")
     result = await db.execute(select(User).where(User.username == payload.username))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(payload.password, user.hashed_password):
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if user.hashed_password is None:
+        raise HTTPException(
+            status_code=401,
+            detail="This account uses SSO; sign in with your organization",
+        )
+    if not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(subject=user.id, role=user.role)
     return TokenResponse(access_token=token)
@@ -107,7 +141,9 @@ async def list_api_keys(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[APIKeyListItem]:
-    result = await db.execute(select(APIKey).where(APIKey.user_id == user.id).order_by(APIKey.created_at.desc()))
+    result = await db.execute(
+        select(APIKey).where(APIKey.user_id == user.id).order_by(APIKey.created_at.desc())
+    )
     return [APIKeyListItem.model_validate(key) for key in result.scalars().all()]
 
 

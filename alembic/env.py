@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from src.app.core.config import settings
 from src.app.core.database import Base
 from src.app.models.tool import Tool  # noqa: F401 – register model metadata
+from src.app.models.user import User  # noqa: F401 – register model metadata
 
 config = context.config
 if config.config_file_name is not None:

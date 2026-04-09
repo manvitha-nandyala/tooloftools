@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { useQuery } from "@tanstack/react-query";
 import { callToolViaMcp } from "../api/mcp";
@@ -43,7 +44,12 @@ export function McpPlaygroundPage() {
           Exercise the same MCP call path the platform uses—handy for debugging auth, payloads, and responses.
         </p>
         <p className="text-xs text-slate-500">
-          Select a tool, edit JSON on the left, then call. The right panel shows the raw gateway response (including errors).
+          Select a tool, edit JSON on the left, then call. The right panel shows the raw gateway response (including
+          errors). This page uses the logged-in HTTP API, not the SSE MCP transport—see{" "}
+          <Link className="text-link" to="/integrations/mcp">
+            MCP guide
+          </Link>{" "}
+          for external clients.
         </p>
       </div>
 

@@ -5,6 +5,8 @@ export interface User {
   username: string;
   role: Role;
   team?: string | null;
+  email?: string | null;
+  auth_provider?: string;
 }
 
 export interface AuthToken {

@@ -58,6 +58,14 @@ export function CatalogPage() {
         </Link>
       </div>
 
+      <div className="rounded-xl border border-violet-200/80 bg-violet-50/40 px-4 py-3 text-sm text-slate-700 ring-1 ring-violet-500/[0.06]">
+        <span className="font-medium text-violet-950">MCP:</span> connect external clients using SSE URLs and tool ids—read the{" "}
+        <Link className="text-link" to="/integrations/mcp">
+          MCP integration guide
+        </Link>
+        .
+      </div>
+
       <div className="space-y-3">
         <p className="text-xs font-medium uppercase tracking-wide text-indigo-900/60">Filters</p>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,42 @@ const MONACO_OPTS = {
 };
 
 const readOnlyMonaco = { ...MONACO_OPTS, readOnly: true };
+
+function McpToolCallout({ toolId }: { toolId: string }) {
+  const [copied, setCopied] = useState(false);
+  const copyId = useCallback(() => {
+    void navigator.clipboard.writeText(toolId).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    });
+  }, [toolId]);
+
+  return (
+    <div className="rounded-2xl border border-indigo-200/90 bg-gradient-to-r from-indigo-50/90 to-violet-50/50 p-4 ring-1 ring-indigo-500/[0.08]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900/70">MCP</p>
+      <p className="mt-1 text-sm text-slate-700">
+        <strong className="font-medium text-slate-900">Tool name</strong> for{" "}
+        <code className="rounded bg-white/80 px-1 py-0.5 text-xs text-slate-800">list_tools</code> /{" "}
+        <code className="rounded bg-white/80 px-1 py-0.5 text-xs text-slate-800">call_tool</code> is this registry id:
+      </p>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <code className="min-w-0 flex-1 break-all rounded-lg border border-indigo-100 bg-white/90 px-3 py-2 text-xs text-slate-800">
+          {toolId}
+        </code>
+        <button type="button" className="btn-secondary shrink-0 px-3 py-2 text-xs" onClick={copyId}>
+          {copied ? "Copied" : "Copy id"}
+        </button>
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-slate-600">
+        See{" "}
+        <Link className="text-link" to="/integrations/mcp">
+          How to connect with MCP
+        </Link>{" "}
+        for SSE URLs, arguments, and response shape.
+      </p>
+    </div>
+  );
+}
 
 export function ToolDetailPage() {
   const { toolId = "" } = useParams();
@@ -73,6 +109,8 @@ export function ToolDetailPage() {
         </Link>
       </div>
 
+      <McpToolCallout toolId={tool.id} />
+
       <div className="space-y-2">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Tool views">
           {(["schema", "try", "info"] as const).map((t) => (
@@ -102,6 +140,9 @@ export function ToolDetailPage() {
             <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50/50 px-4 py-2.5">
               <p className="text-sm font-medium text-indigo-950">Input schema</p>
               <p className="mt-2 text-[11px] leading-snug text-slate-600">Defines allowed arguments and validation rules for this tool.</p>
+              <p className="mt-2 text-[11px] leading-snug text-slate-600">
+                Callers must supply JSON matching this schema when invoking via MCP (SSE) or HTTP.
+              </p>
             </div>
             <div className="mis-json-surface">
               <Editor
