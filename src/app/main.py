@@ -13,6 +13,7 @@ from src.app.api.v1.mcp import router as mcp_router
 from src.app.api.v1.metrics import router as metrics_router
 from src.app.api.v1.tools import router as tools_router
 from src.app.core.config import settings
+from src.app.core.database import Base, engine
 from src.app.core.logging import setup_logging
 from src.app.mcp.server import mcp_app
 from src.app.middleware.logging import LoggingMiddleware
@@ -38,6 +39,9 @@ def _resolve_frontend_dist() -> Path | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
+    if settings.auto_create_tables_on_startup:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     await bootstrap_admin_user()
     yield
 

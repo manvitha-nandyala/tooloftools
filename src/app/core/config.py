@@ -50,6 +50,10 @@ class Settings(BaseSettings):
 
     # Absolute path to Vite `dist/` (e.g. Docker). If unset, uses repo `frontend/dist`.
     frontend_dist: str | None = Field(default=None, validation_alias="FRONTEND_DIST")
+    # Temporary deployment fallback: create DB tables at startup if missing.
+    auto_create_tables_on_startup: bool = Field(
+        default=False, validation_alias="AUTO_CREATE_TABLES_ON_STARTUP"
+    )
 
     # Public self-service registration (always creates consumer; role in body is ignored).
     register_allowed: bool = Field(default=True, validation_alias="REGISTER_ALLOWED")
@@ -57,8 +61,12 @@ class Settings(BaseSettings):
 
     # Break-glass admin from env (upsert on startup). Secrets only via environment / platform.
     bootstrap_admin_enabled: bool = Field(default=False, validation_alias="BOOTSTRAP_ADMIN_ENABLED")
-    bootstrap_admin_username: str | None = Field(default=None, validation_alias="BOOTSTRAP_ADMIN_USERNAME")
-    bootstrap_admin_password: str | None = Field(default=None, validation_alias="BOOTSTRAP_ADMIN_PASSWORD")
+    bootstrap_admin_username: str | None = Field(
+        default=None, validation_alias="BOOTSTRAP_ADMIN_USERNAME"
+    )
+    bootstrap_admin_password: str | None = Field(
+        default=None, validation_alias="BOOTSTRAP_ADMIN_PASSWORD"
+    )
 
     # OIDC (e.g. Azure AD / corporate IdP). Set issuer; discovery loads endpoints.
     oidc_enabled: bool = Field(default=False, validation_alias="OIDC_ENABLED")
